@@ -90,9 +90,10 @@ static void text_align(lv_layer_t *l, const char *s, int x, int y, int w, int h,
                        const lv_font_t *font, lv_text_align_t align) {
     lv_draw_label_dsc_t d;
     lv_draw_label_dsc_init(&d);
+    s = tr(s); /* every drawn string is looked up; formatted ones were translated before snprintf */
     d.text = s;
     d.text_local = 1;
-    d.font = font;
+    d.font = font_for(s, font);
     d.color = lv_color_hex(color);
     d.align = align;
     d.line_space = 2;
@@ -146,7 +147,7 @@ static uint32_t shade(uint32_t c, int percent) { /* 100 = unchanged */
 static void header(lv_layer_t *l, const char *title, bool gold) {
     box(l, 3, 3, 234, 22, PANEL, BRASS, 245, 0);
     int x = 9;
-    if (pointer_mode && page != HOME && page != MINE) {
+    if (pointer_mode && page != HOME && page != MINE && page != LANGUAGE_PICK) {
         box(l, 5, 5, 22, 18, ROW, ROW_EDGE, LV_OPA_COVER, 3);
         text_align(l, LV_SYMBOL_LEFT, 5, 7, 22, 16, FOCUS_INK, &lv_font_montserrat_12, LV_TEXT_ALIGN_CENTER);
         hit_add(0, 0, 40, 30, HIT_BACK);
@@ -309,25 +310,25 @@ static void draw_home(lv_layer_t *l) {
     switch (selected) {
         case STATION_MINE:
             snprintf(line1, sizeof(line1), "%s", game.run.active ? "Resume your dive" : "Dive from the surface");
-            snprintf(line2, sizeof(line2), "Best depth %u m  -  Dives %lu", game.profile.best_depth,
+            snprintf(line2, sizeof(line2), tr("Best depth %u m  -  Dives %lu"), game.profile.best_depth,
                      (unsigned long)game.profile.dives);
             break;
         case STATION_SHOP:
             snprintf(line1, sizeof(line1), "Upgrade pickaxe, lantern, bag");
-            snprintf(line2, sizeof(line2), "Pickaxe Lv %u  Lantern Lv %u  Bag Lv %u", game.profile.level[GD_PICK] + 1,
+            snprintf(line2, sizeof(line2), tr("Pickaxe Lv %u  Lantern Lv %u  Bag Lv %u"), game.profile.level[GD_PICK] + 1,
                      game.profile.level[GD_LANTERN] + 1, game.profile.level[GD_BAG] + 1);
             break;
         case STATION_ELEVATOR: {
             unsigned owned = 0;
             for (unsigned s = 1; s < GD_STOP_COUNT; ++s) owned += gd_stop_owned(&game.profile, s);
-            snprintf(line1, sizeof(line1), "Start deeper: a stop every %u m", GD_STOP_SPACING);
-            snprintf(line2, sizeof(line2), "%u of %u stops open", owned, GD_STOP_COUNT - 1);
+            snprintf(line1, sizeof(line1), tr("Start deeper: a stop every %u m"), GD_STOP_SPACING);
+            snprintf(line2, sizeof(line2), tr("%u of %u stops open"), owned, GD_STOP_COUNT - 1);
             break;
         }
         default:
             amount(game.profile.lifetime_gold, best, sizeof(best));
-            snprintf(line1, sizeof(line1), "Sound, brightness, sleep");
-            snprintf(line2, sizeof(line2), "Lifetime gold %s", best);
+            snprintf(line1, sizeof(line1), "Sound, language, sleep");
+            snprintf(line2, sizeof(line2), tr("Lifetime gold %s"), best);
             break;
     }
     text(l, line1, 16, 248, 208, 16, INK_BODY, &lv_font_montserrat_12);
@@ -460,13 +461,16 @@ static void draw_mine(lv_layer_t *l) {
     /* HUD */
     box(l, 3, 3, 234, 21, PANEL, BRASS, 245, 0);
     char s[32];
-    snprintf(s, sizeof(s), "%u m", r->y);
+    snprintf(s, sizeof(s), tr("%u m"), r->y);
     text(l, s, 9, 7, 50, 14, INK_TITLE, &lv_font_montserrat_12);
     int bar = r->energy_max ? 74 * r->energy / r->energy_max : 0;
     box(l, 62, 9, 78, 10, 0x18201c, 0xb8be9e, LV_OPA_COVER, 2);
     fill(l, 64, 11, bar, 6,
          r->energy * 5 <= r->energy_max ? 0xcc5a4a : r->energy * 2 <= r->energy_max ? 0xe0b04a : 0x9cbb78,
          LV_OPA_COVER);
+    snprintf(s, sizeof(s), "%u/%u", r->energy, r->energy_max); /* one swing = one energy */
+    text_align(l, s, 63, 8, 78, 12, 0x000000, &lv_font_montserrat_10, LV_TEXT_ALIGN_CENTER);
+    text_align(l, s, 62, 7, 78, 12, 0xffffff, &lv_font_montserrat_10, LV_TEXT_ALIGN_CENTER);
     snprintf(s, sizeof(s), "%u/%u", gd_bag_used(r), r->bag_cap);
     box(l, 150, 8, 11, 12, 0x8a6a42, 0x5a3a1a, LV_OPA_COVER, 3); /* bag */
     text(l, s, 165, 7, 44, 14, gd_bag_used(r) >= r->bag_cap ? INK_BAD : INK_BODY, &lv_font_montserrat_12);
@@ -500,7 +504,7 @@ static void draw_pause(lv_layer_t *l) {
     snprintf(labels[1], 40, "Light dynamite");
     snprintf(values[1], 24, "x%u", game.profile.level[GD_DYNAMITE]);
     snprintf(labels[2], 40, "Rope up and sell");
-    snprintf(values[2], 24, "%s gold", bag);
+    snprintf(values[2], 24, tr("%s gold"), bag);
     rows(l, 106, PAUSE_ROWS, PAUSE_ROWS, labels, values, NULL);
     text(l, "Fainting loses half the bag; lava loses all of it.", 28, 200, 184, 40, INK_DIM, &lv_font_montserrat_10);
     footer(l, pointer_mode ? "Tap an option" : "UP/DOWN choose   OK confirm");
@@ -518,21 +522,34 @@ static void draw_report(lv_layer_t *l) {
     text(l, titles[rep->end], 20, 40, 200, 20, inks[rep->end], &lv_font_montserrat_14);
     int y = 64;
     char s[48], v[24];
+    bool any_ore = false;
+    for (unsigned i = 0; i < GD_ORE_KINDS; ++i) any_ore |= rep->ore[i] != 0;
+    if (any_ore) { /* sale table: rock, quantity, price each, line total */
+        text(l, "Rock", 22, y, 70, 14, INK_DIM, &lv_font_montserrat_10);
+        text_align(l, "Qty", 96, y, 26, 14, INK_DIM, &lv_font_montserrat_10, LV_TEXT_ALIGN_RIGHT);
+        text_align(l, "Price", 124, y, 40, 14, INK_DIM, &lv_font_montserrat_10, LV_TEXT_ALIGN_RIGHT);
+        text_align(l, "Total", 166, y, 52, 14, INK_DIM, &lv_font_montserrat_10, LV_TEXT_ALIGN_RIGHT);
+        y += 14;
+    }
     for (unsigned i = 0; i < GD_ORE_KINDS; ++i) {
         if (!rep->ore[i]) continue;
         const GdTileInfo *info = gd_tile_info(GD_ORE_FIRST + i);
+        const uint64_t each = gd_ore_value(&game.profile, i);
         box(l, 22, y + 3, 8, 8, info->color, shade(info->color, 55), LV_OPA_COVER, 1);
-        snprintf(s, sizeof(s), "%s x%u", info->name, rep->ore[i]);
-        text(l, s, 36, y, 120, 14, INK_BODY, &lv_font_montserrat_12);
-        amount(rep->ore[i] * gd_ore_value(&game.profile, i), v, sizeof(v));
-        text_align(l, v, 140, y, 70, 14, INK_TITLE, &lv_font_montserrat_12, LV_TEXT_ALIGN_RIGHT);
+        text(l, info->name, 34, y, 62, 14, INK_BODY, &lv_font_montserrat_12);
+        snprintf(s, sizeof(s), "%u", rep->ore[i]);
+        text_align(l, s, 96, y, 26, 14, INK_BODY, &lv_font_montserrat_12, LV_TEXT_ALIGN_RIGHT);
+        amount(each, v, sizeof(v));
+        text_align(l, v, 124, y, 40, 14, INK_BODY, &lv_font_montserrat_12, LV_TEXT_ALIGN_RIGHT);
+        amount(rep->ore[i] * each, v, sizeof(v));
+        text_align(l, v, 166, y, 52, 14, INK_TITLE, &lv_font_montserrat_12, LV_TEXT_ALIGN_RIGHT);
         y += 18;
     }
     if (rep->chest_gold) {
         coin(l, 21, y + 2, 10);
         text(l, "Treasure", 36, y, 120, 14, INK_BODY, &lv_font_montserrat_12);
         amount(rep->chest_gold, v, sizeof(v));
-        text_align(l, v, 140, y, 70, 14, INK_TITLE, &lv_font_montserrat_12, LV_TEXT_ALIGN_RIGHT);
+        text_align(l, v, 166, y, 52, 14, INK_TITLE, &lv_font_montserrat_12, LV_TEXT_ALIGN_RIGHT);
         y += 18;
     }
     if (y == 64) {
@@ -541,7 +558,7 @@ static void draw_report(lv_layer_t *l) {
         y += 18;
     }
     if (rep->lost) {
-        snprintf(s, sizeof(s), "Lost %u piece%s of ore", rep->lost, rep->lost == 1 ? "" : "s");
+        snprintf(s, sizeof(s), tr(rep->lost == 1 ? "Lost %u piece of ore" : "Lost %u pieces of ore"), rep->lost);
         text(l, s, 22, y, 196, 14, INK_BAD, &lv_font_montserrat_12);
         y += 18;
     }
@@ -551,7 +568,7 @@ static void draw_report(lv_layer_t *l) {
     text(l, "Earned", 22, y + 10, 100, 18, INK_BODY, &lv_font_montserrat_14);
     coin(l, 196, y + 13, 12);
     text_align(l, s, 100, y + 10, 92, 18, INK_TITLE, &lv_font_montserrat_14, LV_TEXT_ALIGN_RIGHT);
-    snprintf(s, sizeof(s), "Deepest %u m", rep->deepest);
+    snprintf(s, sizeof(s), tr("Deepest %u m"), rep->deepest);
     text(l, s, 22, y + 36, 120, 16, INK_BODY, &lv_font_montserrat_12);
     if (rep->new_best && (clock_ms / 400) % 2 == 0)
         text_align(l, "NEW BEST!", 120, y + 36, 98, 16, INK_GOOD, &lv_font_montserrat_12, LV_TEXT_ALIGN_RIGHT);
@@ -566,9 +583,9 @@ static void draw_shop(lv_layer_t *l) {
     for (unsigned u = 0; u < GD_UPGRADE_COUNT; ++u) {
         uint64_t price = gd_upgrade_price(&game.profile, (GdUpgrade)u);
         if (u == GD_DYNAMITE)
-            snprintf(labels[u], 40, "%s  x%u", gd_upgrade_name((GdUpgrade)u), game.profile.level[u]);
+            snprintf(labels[u], 40, "%s  x%u", tr(gd_upgrade_name((GdUpgrade)u)), game.profile.level[u]);
         else
-            snprintf(labels[u], 40, "%s  Lv %u", gd_upgrade_name((GdUpgrade)u), game.profile.level[u] + 1);
+            snprintf(labels[u], 40, tr("%s  Lv %u"), tr(gd_upgrade_name((GdUpgrade)u)), game.profile.level[u] + 1);
         if (!price)
             snprintf(values[u], 24, "%s", u == GD_DYNAMITE ? "Full" : "Max");
         else
@@ -587,16 +604,16 @@ static void draw_shop(lv_layer_t *l) {
         text(l, gd_upgrade_blurb((GdUpgrade)selected), 16, 224, 208, 30, INK_BODY, &lv_font_montserrat_12);
         switch (selected) {
             case GD_PICK:
-                snprintf(s, sizeof(s), "Stone %u hits  ->  %u", gd_hits_for(p, gd_tile_info(GD_STONE)->hardness),
+                snprintf(s, sizeof(s), tr("Stone %u hits  ->  %u"), gd_hits_for(p, gd_tile_info(GD_STONE)->hardness),
                          gd_hits_for(&next, gd_tile_info(GD_STONE)->hardness));
                 break;
             case GD_LANTERN:
-                snprintf(s, sizeof(s), "Light radius %u  ->  %u", gd_light_radius(p), gd_light_radius(&next));
+                snprintf(s, sizeof(s), tr("Light radius %u  ->  %u"), gd_light_radius(p), gd_light_radius(&next));
                 break;
-            case GD_ENERGY: snprintf(s, sizeof(s), "Energy %u  ->  %u", gd_energy_max(p), gd_energy_max(&next)); break;
-            case GD_BAG: snprintf(s, sizeof(s), "Holds %u  ->  %u pieces", gd_bag_capacity(p), gd_bag_capacity(&next)); break;
-            case GD_CHARM: snprintf(s, sizeof(s), "Ore value +%u%%  ->  +%u%%", gd_charm_percent(p), gd_charm_percent(&next)); break;
-            default: snprintf(s, sizeof(s), "Owned %u of %u", p->level[GD_DYNAMITE], GD_DYNAMITE_MAX); break;
+            case GD_ENERGY: snprintf(s, sizeof(s), tr("Energy %u  ->  %u"), gd_energy_max(p), gd_energy_max(&next)); break;
+            case GD_BAG: snprintf(s, sizeof(s), tr("Holds %u  ->  %u pieces"), gd_bag_capacity(p), gd_bag_capacity(&next)); break;
+            case GD_CHARM: snprintf(s, sizeof(s), tr("Ore value +%u%%  ->  +%u%%"), gd_charm_percent(p), gd_charm_percent(&next)); break;
+            default: snprintf(s, sizeof(s), tr("Owned %u of %u"), p->level[GD_DYNAMITE], GD_DYNAMITE_MAX); break;
         }
         text(l, s, 16, 266, 208, 16, INK_GOOD, &lv_font_montserrat_10);
     } else
@@ -610,7 +627,7 @@ static void draw_elevator(lv_layer_t *l) {
     uint32_t inks[GD_STOP_COUNT + 1];
     for (unsigned s = 0; s < GD_STOP_COUNT; ++s) {
         if (s)
-            snprintf(labels[s], 40, "Stop  %u m", s * GD_STOP_SPACING);
+            snprintf(labels[s], 40, tr("Stop  %u m"), s * GD_STOP_SPACING);
         else
             snprintf(labels[s], 40, "Surface  0 m");
         if (gd_stop_owned(&game.profile, s)) {
@@ -632,13 +649,13 @@ static void draw_elevator(lv_layer_t *l) {
     if (selected >= GD_STOP_COUNT)
         snprintf(s, sizeof(s), "Return to the surface camp.");
     else if (gd_stop_owned(&game.profile, selected))
-        snprintf(s, sizeof(s), "Ride down and start digging at %u m.", selected * GD_STOP_SPACING);
+        snprintf(s, sizeof(s), tr("Ride down and start digging at %u m."), selected * GD_STOP_SPACING);
     else if (gd_stop_reached(&game.profile, selected))
         snprintf(s, sizeof(s), "Open this stop once; ride it on every later dive.");
     else
-        snprintf(s, sizeof(s), "Reach %u m in a dive to open this stop.", selected * GD_STOP_SPACING);
+        snprintf(s, sizeof(s), tr("Reach %u m in a dive to open this stop."), selected * GD_STOP_SPACING);
     text(l, s, 16, 230, 208, 40, INK_BODY, &lv_font_montserrat_12);
-    snprintf(s, sizeof(s), "Best depth %u m", game.profile.best_depth);
+    snprintf(s, sizeof(s), tr("Best depth %u m"), game.profile.best_depth);
     text(l, s, 16, 270, 208, 14, INK_DIM, &lv_font_montserrat_10);
     footer(l, pointer_mode ? "Tap a stop" : "OK ride / open   hold OK back");
 }
@@ -654,13 +671,15 @@ static void draw_settings(lv_layer_t *l) {
     snprintf(labels[2], 40, "Brightness");
     snprintf(values[2], 24, "%u%%", preferences[PREF_BRIGHTNESS]);
     snprintf(labels[3], 40, "Sleep when idle");
-    snprintf(values[3], 24, "%s", pointer_mode ? "Passport" : sleeps[preferences[PREF_SLEEP]]);
-    snprintf(labels[4], 40, "Erase progress");
-    snprintf(labels[5], 40, "Back");
-    rows(l, 34, SETTINGS_ROWS, SETTINGS_ROWS, labels, values, NULL);
+    snprintf(values[3], 24, "%s", tr(pointer_mode ? "Passport only" : sleeps[preferences[PREF_SLEEP]]));
+    snprintf(labels[4], 40, "Language");
+    snprintf(values[4], 24, "%s", language_names[language]);
+    snprintf(labels[5], 40, "Erase progress");
+    snprintf(labels[6], 40, "Back");
+    rows(l, 34, SETTINGS_ROWS, 6, labels, values, NULL);
     panel(l, 8, 222, 224, 68);
     char s[64];
-    snprintf(s, sizeof(s), "Gold Digger %s", firmware_version());
+    snprintf(s, sizeof(s), tr("Gold Digger %s"), firmware_version());
     text(l, s, 16, 228, 208, 16, INK_TITLE, &lv_font_montserrat_12);
     text(l, save_enabled ? "Progress saves automatically." : "Saving is off for this session.", 16, 248, 208, 14,
          save_enabled ? INK_BODY : INK_BAD, &lv_font_montserrat_10);
@@ -679,6 +698,19 @@ static void draw_reset(lv_layer_t *l) {
     footer(l, pointer_mode ? "Tap an option" : "UP/DOWN choose   OK confirm");
 }
 
+/* First start: each language is named in itself; the highlight previews it. */
+static void draw_language(lv_layer_t *l) {
+    backdrop(l);
+    header(l, "Gold Digger", false);
+    panel(l, 10, 40, 220, 70);
+    text_align(l, "Choose a language", 20, 52, 200, 18, INK_TITLE, &lv_font_montserrat_14, LV_TEXT_ALIGN_CENTER);
+    text_align(l, "请选择语言", 20, 78, 200, 18, INK_TITLE, &lv_font_montserrat_14, LV_TEXT_ALIGN_CENTER);
+    char labels[LANGUAGE_COUNT][40], values[LANGUAGE_COUNT][24] = {{0}};
+    for (unsigned i = 0; i < LANGUAGE_COUNT; ++i) snprintf(labels[i], 40, "%s", language_names[i]);
+    rows(l, 130, LANGUAGE_COUNT, LANGUAGE_COUNT, labels, values, NULL);
+    footer(l, pointer_mode ? "Tap a language" : "UP/DOWN choose   OK confirm");
+}
+
 static void draw_event(lv_event_t *event) {
     lv_layer_t *l = lv_event_get_layer(event);
     hit_clear();
@@ -690,6 +722,7 @@ static void draw_event(lv_event_t *event) {
         case SHOP: draw_shop(l); break;
         case ELEVATOR: draw_elevator(l); break;
         case SETTINGS: draw_settings(l); break;
+        case LANGUAGE_PICK: draw_language(l); break;
         default: draw_reset(l); break;
     }
 }

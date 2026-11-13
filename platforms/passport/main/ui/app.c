@@ -14,6 +14,8 @@ char notice[64];
 uint32_t notice_until;
 Floater floaters[FLOATERS];
 uint32_t shake_until;
+uint32_t swing_at;
+uint8_t swing_dir;
 
 static QueueHandle_t inputs;
 static bool redraw_wanted, screen_dimmed, screen_dark, wake_guard, low_energy_warned;
@@ -56,6 +58,7 @@ unsigned page_rows(Page p) {
         case ELEVATOR: return GD_STOP_COUNT + 1;
         case SETTINGS: return SETTINGS_ROWS;
         case RESET_CONFIRM: return 2;
+        case LANGUAGE_PICK: return LANGUAGE_COUNT;
         default: return 1;
     }
 }
@@ -79,14 +82,16 @@ static void react(GdEvent e) {
         case GD_EV_HIT:
             game_audio_effect(GD_SOUND_DIG);
             shake_until = clock_ms + 50;
+            swing_at = clock_ms ? clock_ms : 1;
             break;
         case GD_EV_DIG:
             game_audio_effect(GD_SOUND_DIG);
             shake_until = clock_ms + 80;
+            swing_at = clock_ms ? clock_ms : 1;
             break;
         case GD_EV_ORE:
             game_audio_effect(GD_SOUND_ORE);
-            snprintf(text, sizeof(text), "+%s", gd_tile_info(GD_ORE_FIRST + e.value)->name);
+            snprintf(text, sizeof(text), "+%s", tr(gd_tile_info(GD_ORE_FIRST + e.value)->name));
             floater(text, gd_tile_info(GD_ORE_FIRST + e.value)->color, r->x, r->y);
             break;
         case GD_EV_BAG_FULL:
@@ -95,12 +100,12 @@ static void react(GdEvent e) {
             break;
         case GD_EV_CHEST:
             game_audio_effect(GD_SOUND_CHEST);
-            snprintf(text, sizeof(text), "+%lu gold", (unsigned long)e.value);
+            snprintf(text, sizeof(text), tr("+%lu gold"), (unsigned long)e.value);
             floater(text, 0xffde6e, r->x, r->y);
             break;
         case GD_EV_GAS:
             game_audio_effect(GD_SOUND_GAS);
-            snprintf(text, sizeof(text), "Gas! -%lu energy", (unsigned long)e.value);
+            snprintf(text, sizeof(text), tr("Gas! -%lu energy"), (unsigned long)e.value);
             show_notice(text);
             floater("Gas!", 0x9fd36a, r->x, r->y);
             break;
@@ -169,7 +174,10 @@ static void activate(void) {
             else
                 go(SETTINGS, 0);
             break;
-        case MINE: react(gd_move(&game, GD_DOWN)); break;
+        case MINE:
+            swing_dir = GD_DOWN;
+            react(gd_move(&game, GD_DOWN));
+            break;
         case PAUSE:
             if (selected == 0)
                 go(MINE, 0);
@@ -198,8 +206,8 @@ static void activate(void) {
                 uint64_t price = gd_upgrade_price(&game.profile, u);
                 if (gd_buy_upgrade(&game, u)) {
                     game_audio_effect(GD_SOUND_COINS);
-                    snprintf(text, sizeof(text), "%s %s", gd_upgrade_name(u),
-                             u == GD_DYNAMITE ? "bought" : "upgraded");
+                    snprintf(text, sizeof(text), tr(u == GD_DYNAMITE ? "%s bought" : "%s upgraded"),
+                             tr(gd_upgrade_name(u)));
                     show_notice(text);
                     save_now();
                 } else {
@@ -209,7 +217,7 @@ static void activate(void) {
                     else if (game.run.active && u != GD_DYNAMITE)
                         show_notice("Finish the dive first");
                     else {
-                        snprintf(text, sizeof(text), "Need %llu more gold",
+                        snprintf(text, sizeof(text), tr("Need %llu more gold"),
                                  (unsigned long long)(price - game.profile.gold));
                         show_notice(text);
                     }
@@ -231,9 +239,9 @@ static void activate(void) {
             } else {
                 game_audio_effect(GD_SOUND_DENY);
                 if (!gd_stop_reached(&game.profile, selected))
-                    snprintf(text, sizeof(text), "Dig to %u m first", selected * GD_STOP_SPACING);
+                    snprintf(text, sizeof(text), tr("Dig to %u m first"), selected * GD_STOP_SPACING);
                 else
-                    snprintf(text, sizeof(text), "Need %llu gold",
+                    snprintf(text, sizeof(text), tr("Need %llu gold"),
                              (unsigned long long)gd_stop_price(selected));
                 show_notice(text);
             }
@@ -251,12 +259,23 @@ static void activate(void) {
             if (selected <= 3) {
                 game_audio_levels(preferences[PREF_MUSIC], preferences[PREF_EFFECTS]);
                 save_preferences();
-            } else if (selected == 4)
+            } else if (selected == 4) {
+                set_language((language + 1u) % LANGUAGE_COUNT);
+                if (save_enabled && storage_language_save(language) != ESP_OK) show_notice("Saving failed");
+            } else if (selected == 5)
                 go(RESET_CONFIRM, 0);
             else
                 go(HOME, STATION_SETTINGS);
             break;
         }
+        case LANGUAGE_PICK:
+            set_language(selected);
+            if (save_enabled && storage_language_save(language) != ESP_OK) show_notice("Saving failed");
+            if (game.run.active)
+                go(MINE, 0);
+            else
+                go(HOME, STATION_MINE);
+            break;
         case RESET_CONFIRM:
             if (selected == 1) {
                 gd_new_profile(&game);
@@ -264,7 +283,7 @@ static void activate(void) {
                 show_notice("Progress erased");
                 go(HOME, STATION_MINE);
             } else
-                go(SETTINGS, 4);
+                go(SETTINGS, 5);
             break;
         default: break;
     }
@@ -277,7 +296,7 @@ static void back(void) {
         case SHOP: go(HOME, STATION_SHOP); break;
         case ELEVATOR: go(HOME, STATION_ELEVATOR); break;
         case SETTINGS: go(HOME, STATION_SETTINGS); break;
-        case RESET_CONFIRM: go(SETTINGS, 4); break;
+        case RESET_CONFIRM: go(SETTINGS, 5); break;
         default: break;
     }
 }
@@ -285,7 +304,8 @@ void app_input(Input in) {
     last_input_ms = clock_ms;
     redraw_wanted = true;
     if (page == MINE && in != IN_BACK) {
-        react(gd_move(&game, in == IN_UP ? GD_LEFT : in == IN_DOWN ? GD_RIGHT : GD_DOWN));
+        swing_dir = in == IN_UP ? GD_LEFT : in == IN_DOWN ? GD_RIGHT : GD_DOWN;
+        react(gd_move(&game, (GdDir)swing_dir));
         return;
     }
     if (in == IN_BACK) {
@@ -300,6 +320,7 @@ void app_input(Input in) {
     } else if (rows > 1) {
         game_audio_effect(GD_SOUND_MENU);
         selected = in == IN_UP ? (selected + rows - 1) % rows : (selected + 1) % rows;
+        if (page == LANGUAGE_PICK) set_language(selected); /* preview the highlighted language */
     }
 }
 void app_activate(int id) {
@@ -502,6 +523,10 @@ bool app_start(void) {
     }
     if (bsp_battery_init() != ESP_OK) battery_percent = -1;
     storage_preferences_load(preferences);
+    /* First start (no saved language): ask before anything else. */
+    uint8_t stored = storage_language_load();
+    set_language(stored);
+    if (stored >= LANGUAGE_COUNT && save_enabled) go(LANGUAGE_PICK, 0);
     if (!bsp_lvgl_lock(2000)) return false;
     build_ui();
     render();

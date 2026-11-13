@@ -29,9 +29,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-typedef enum { HOME, MINE, PAUSE, REPORT, SHOP, ELEVATOR, SETTINGS, RESET_CONFIRM, PAGE_COUNT } Page;
+typedef enum { HOME, MINE, PAUSE, REPORT, SHOP, ELEVATOR, SETTINGS, RESET_CONFIRM, LANGUAGE_PICK, PAGE_COUNT } Page;
 typedef enum { STATION_SHOP, STATION_MINE, STATION_ELEVATOR, STATION_SETTINGS, STATION_COUNT } Station;
-enum { SETTINGS_ROWS = 6, SHOP_ROWS = GD_UPGRADE_COUNT + 1, PAUSE_ROWS = 3 };
+enum { SETTINGS_ROWS = 7, SHOP_ROWS = GD_UPGRADE_COUNT + 1, PAUSE_ROWS = 3 };
 
 /* ---- state shared by the modules (app.c) ---------------------------------- */
 extern GdGame game;
@@ -55,11 +55,22 @@ typedef struct {
 enum { FLOATERS = 5 };
 extern Floater floaters[FLOATERS];
 extern uint32_t shake_until;
+extern uint32_t swing_at; /* clock_ms of the last pick swing that landed (0 = none) */
+extern uint8_t swing_dir;  /* GdDir of that swing */
 
 const char *firmware_version(void);
 bool save_now(void);
 void show_notice(const char *text);
 unsigned page_rows(Page p);
+
+/* ---- languages (lang.c) --------------------------------------------------- */
+enum { LANGUAGE_COUNT = 2 }; /* 0 English, 1 Simplified Chinese */
+extern uint8_t language;
+extern const char *const language_names[LANGUAGE_COUNT];
+extern const lv_font_t gd_zh_font;
+void set_language(unsigned index);
+const char *tr(const char *english);
+const lv_font_t *font_for(const char *text, const lv_font_t *latin);
 
 /* ---- drawing (draw.c) ----------------------------------------------------- */
 void build_ui(void);

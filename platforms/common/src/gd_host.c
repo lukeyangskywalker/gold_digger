@@ -248,6 +248,12 @@ void storage_preferences_load(uint8_t values[PREF_COUNT]) {
 esp_err_t storage_preferences_save(const uint8_t values[PREF_COUNT]) {
     return host_write("preferences", values, PREF_COUNT);
 }
+uint8_t storage_language_load(void) {
+    uint8_t value[2];
+    size_t size = 0;
+    return host_read("language", value, sizeof(value), &size) == 0 && size == 1 ? value[0] : 0xff;
+}
+esp_err_t storage_language_save(uint8_t language) { return host_write("language", &language, 1); }
 
 /* ---- public API ---------------------------------------------------------- */
 void gd_host_pointer(GdPointer phase, int x, int y) {

@@ -60,3 +60,20 @@ void storage_preferences_load(uint8_t values[PREF_COUNT]) {
 esp_err_t storage_preferences_save(const uint8_t values[PREF_COUNT]) {
     return put("preferences", values, PREF_COUNT);
 }
+uint8_t storage_language_load(void) {
+    nvs_handle_t h;
+    uint8_t value = 0xff;
+    if (open_ns(NVS_READONLY, &h) != ESP_OK) return 0xff;
+    if (nvs_get_u8(h, "language", &value) != ESP_OK) value = 0xff;
+    nvs_close(h);
+    return value;
+}
+esp_err_t storage_language_save(uint8_t language) {
+    nvs_handle_t h;
+    esp_err_t err = open_ns(NVS_READWRITE, &h);
+    if (err != ESP_OK) return err;
+    err = nvs_set_u8(h, "language", language);
+    if (err == ESP_OK) err = nvs_commit(h);
+    nvs_close(h);
+    return err;
+}

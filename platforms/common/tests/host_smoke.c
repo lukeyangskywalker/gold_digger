@@ -7,9 +7,10 @@
 #include <string.h>
 
 static int64_t fake_us;
-static uint8_t store_data[2][4096];
-static size_t store_len[2];
-static int key_index(const char *key) { return !strcmp(key, "save_v1") ? 0 : !strcmp(key, "preferences") ? 1 : -1; }
+static uint8_t store_data[3][4096];
+static size_t store_len[3];
+static int key_index(const char *key) { return !strcmp(key, "save_v1") ? 0 : !strcmp(key, "preferences") ? 1 : !strcmp(key, "language") ? 2 : -1;
+}
 static int store_read(void *u, const char *key, uint8_t *data, size_t cap, size_t *len) {
     (void)u;
     int k = key_index(key);
@@ -63,6 +64,10 @@ int main(int argc, char **argv) {
     GdHostConfig c = {store_read, store_write, now, NULL, 1234, GD_PIXELS_ARGB};
     if (!gd_host_init(&c)) return 1;
     run(300);
+    shot("00_language_pick"); /* first start asks; OK keeps English */
+    press(GD_KEY_OK, 40);
+    assert(store_len[2] == 1 && store_data[2][0] == 0);
+    run(300);
     shot("01_home");
     press(GD_KEY_OK, 40); /* Mine Shaft: dive */
     run(200);
@@ -94,6 +99,35 @@ int main(int argc, char **argv) {
     press(GD_KEY_DOWN, 40);
     press(GD_KEY_OK, 40);
     shot("09_settings");
+    /* Settings > Language switches to Simplified Chinese and stores it. */
+    for (int i = 0; i < 4; ++i) press(GD_KEY_DOWN, 40);
+    press(GD_KEY_OK, 40);
+    assert(store_len[2] == 1 && store_data[2][0] == 1);
+    shot("10_settings_zh");
+    press(GD_KEY_OK, 700); /* back to the surface, Settings selected */
+    shot("11_home_zh");
+    press(GD_KEY_UP, 40);
+    press(GD_KEY_UP, 40); /* Mine Shaft */
+    press(GD_KEY_OK, 40);
+    for (int i = 0; i < 3; ++i) press(GD_KEY_OK, 40);
+    run(200);
+    shot("12_mine_zh");
+    press(GD_KEY_OK, 700);
+    shot("13_pause_zh");
+    press(GD_KEY_DOWN, 40);
+    press(GD_KEY_DOWN, 40);
+    press(GD_KEY_OK, 40);
+    run(300);
+    shot("14_report_zh");
+    press(GD_KEY_OK, 40);
+    press(GD_KEY_UP, 40); /* Trading Post */
+    press(GD_KEY_OK, 40);
+    shot("15_shop_zh");
+    press(GD_KEY_OK, 700);
+    press(GD_KEY_DOWN, 40);
+    press(GD_KEY_DOWN, 40);
+    press(GD_KEY_OK, 40);
+    shot("16_elevator_zh");
     gd_host_save();
     puts("host_smoke: ok");
     return 0;

@@ -23,7 +23,7 @@ typedef enum {
 } GdPixelFormat;
 
 typedef struct {
-    /* Persistent key/value storage (keys "save_v1" and "preferences"). read
+    /* Persistent key/value storage (keys "save_v1", "preferences" and "language"). read
        returns 0 and the length on success, 1 when the key does not exist, any
        other value on error. write must replace atomically and return 0. */
     int (*read)(void *user, const char *key, uint8_t *data, size_t capacity, size_t *length);
