@@ -1,4 +1,4 @@
-/* Persistent storage. Passport: NVS partition "game_data" (storage.c).
+/* Persistent storage. Passport: private save log in partition "gd_save" (storage.c).
    Hosts: platforms/common/src/gd_host.c with the same keys and validation. */
 #pragma once
 #include "digger.h"

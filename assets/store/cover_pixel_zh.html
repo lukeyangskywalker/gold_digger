@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>淘金者像素封面</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{position:absolute;left:0;top:0;display:block;width:1152px;height:1536px;image-rendering:pixelated}</style>
+</head><body><canvas id="c" width="192" height="256"></canvas>
+<script>
+const W=192,H=256,c=document.getElementById('c'),g=c.getContext('2d');g.imageSmoothingEnabled=false;
+let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const R=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x|0,y|0,w,h)};
+function spr(map,pal,x,y,flip,s){s=s||1;map.forEach((row,j)=>[...row].forEach((ch,i)=>{if(ch!=='.'&&pal[ch])R(x+i*s,y+j*s,s,s,pal[ch])}))}
+
+// --- sky (banded + dithered)
+const sky=['#140c2e','#1f1240','#2e1850','#46205a','#682a5e','#8e3a5c','#b64e52','#d86a48','#f08c44','#f8b050'];
+const GROUND=100;
+for(let y=0;y<GROUND;y++){const t=y/GROUND*(sky.length-1),i=Math.floor(t),f=t-i;
+  for(let x=0;x<W;x++){const d=((x+y)%2===0?0.25:0.75)+((x%4<2)!==(y%4<2)?0.1:-0.1);R(x,y,1,1,sky[Math.min(sky.length-1,f>d?i+1:i)])}}
+for(let k=0;k<40;k++){const x=rnd()*W|0,y=rnd()*50|0;R(x,y,1,1,rnd()<.3?'#fff6c0':'#c8b8ff')}
+R(150,14,1,5,'#fff');R(148,16,5,1,'#fff');
+// sun
+for(let y=-14;y<=14;y++)for(let x=-14;x<=14;x++)if(x*x+y*y<=196)R(160+x,86+y,1,1,y<-4?'#ffe08a':y<4?'#ffc860':'#ffa850');
+// mountains
+const mtn=(base,col,amp,ph)=>{for(let x=0;x<W;x++){const h=Math.abs(((x+ph)%60)-30)*amp+Math.sin(x*.3)*1.5;R(x,base-30+h,1,GROUND-(base-30+h),col)}};
+mtn(88,'#5a2a5a',0.7,10);mtn(96,'#3a1c40',0.5,40);
+// headframe
+const hf=[
+"....bbbbb....",
+"...b.www.b...",
+"...b.wkw.b...",
+"...b.www.b...",
+"..b...r...b..",
+"..bbbbrbbbb..",
+".b....r....b.",
+".b....r....b.",
+"b.....r.....b",
+"b.....r.....b"];
+spr(hf,{b:'#7a4a22',w:'#c89048',k:'#2a1a10',r:'#e8d090'},24,GROUND-10);
+
+// --- earth
+const layers=[[GROUND,'#8a5a32','#6e4426','#a06c3c'],[130,'#7a5040','#5e3a30','#946450'],[160,'#6a6070','#4e4658','#827890'],
+  [190,'#4a4060','#363048','#5e5478'],[220,'#2e2238','#1e1626','#3e3050']];
+const layerAt=y=>{let L=layers[0];for(const l of layers)if(y>=l[0])L=l;return L};
+for(let y=GROUND;y<H;y++)for(let x=0;x<W;x++){const L=layerAt(y+((x*7)%5===0?2:0));let col=L[1];
+  if(x%16===0||y%16===4)col=L[2];else if(rnd()<.08)col=L[3];else if(rnd()<.05)col=L[2];R(x,y,1,1,col)}
+// grass
+for(let x=0;x<W;x++){R(x,GROUND,1,3,'#4c8a2e');R(x,GROUND,1,1,'#7cc04a');if(x%3===0)R(x,GROUND-1,1,1,'#7cc04a');if(x%7===2)R(x,GROUND+3,1,1,'#4c8a2e')}
+
+// --- tunnel (dug cells, 16px grid)
+const cells=[[1,0],[1,1],[1,2],[1,3],[2,3],[3,3],[4,3],[4,4],[4,5],[4,6],[5,6],[6,6],[5,5],[6,5],[5,7],[6,7]];
+cells.forEach(([cx,cy])=>{const x=cx*16+8,y=GROUND+4+cy*16;R(x,y,16,16,'#120a16');R(x,y,16,1,'#000');});
+// rope
+for(let y=GROUND-6;y<GROUND+52;y++)if(y%3)R(30,y,1,1,'#e8d090');
+// lantern light around miner
+const mx=5*16+8+2,my=GROUND+4+5*16+2;
+for(let y=-44;y<=44;y++)for(let x=-44;x<=44;x++){const d=x*x+y*y;if(d<44*44&&((x+y)&1)===0&&d>26*26)continue;}
+g.globalCompositeOperation='lighter';
+for(let r=44;r>0;r-=4){g.fillStyle='rgba(255,180,80,0.025)';for(let y=-r;y<=r;y++){const w=Math.floor(Math.sqrt(r*r-y*y));g.fillRect(mx+16-w,my+16+y,2*w,1)}}
+g.globalCompositeOperation='source-over';
+
+// --- sprites
+const nug=["..yyy..",".yWyyy.","yyyyyyo","yyyyyoo",".oooo.."];
+const gem=["..WcC..",".WccCC.","cccccCC",".cccCC.","..cCC..","...C..."];
+const glow=(x,y,r,col)=>{for(let j=-r;j<=r;j++)for(let i=-r;i<=r;i++){const d=i*i+j*j;if(d<=r*r&&((i+j)&1)===0&&d>(r-3)*(r-3)/1.8)R(x+i,y+j,1,1,col)}};
+const NUG=(x,y)=>spr(nug,{y:'#ffd23a',W:'#fff8c8',o:'#c07818'},x,y);
+const GEM=(x,y,c1,c2,gl)=>{glow(x+3,y+3,8,gl);spr(gem,{W:'#ffffff',c:c1,C:c2},x,y)};
+NUG(150,112);NUG(12,124);NUG(132,160);NUG(60,178);NUG(176,140);NUG(112,122);
+GEM(166,146,'#ff4a78','#b01a48','#ff4a7866');GEM(20,200,'#ff4a78','#b01a48','#ff4a7866');
+GEM(150,206,'#6ef0ff','#1a9ad8','#6ef0ff66');GEM(48,230,'#6ef0ff','#1a9ad8','#6ef0ff66');GEM(168,186,'#6ef0ff','#1a9ad8','#6ef0ff66');
+// coal + copper
+[[84,112],[100,136],[180,186],[10,166]].forEach(([x,y])=>{R(x,y,3,2,'#141018');R(x+1,y-1,2,1,'#141018');R(x+1,y,1,1,'#3a3440')});
+[[120,104],[70,146],[34,150]].forEach(([x,y])=>{R(x,y,2,2,'#e0783a');R(x+2,y+1,1,1,'#ffa060')});
+// chest
+spr(["..bbbbbbbb..",".bBBBBBBBBb.","bBBBBBBBBBBb","bbbbbyybbbbb","yyyyyWyyyyyy","bBBBByyBBBBb","bBBBBBBBBBBb","bbbbbbbbbbbb"],
+  {b:'#3a1a08',B:'#9a5a1c',y:'#ffc83a',W:'#fff8c8'},12,186);
+for(const [x,y] of [[10,184],[25,183],[8,192]])R(x,y,1,1,'#fff8c8');
+// gas pocket warning (green puff)
+spr(["..gg..",".gGGg.","gGGGGg",".gggg."],{g:'#4a8a3a',G:'#7ad05a'},118,198);
+
+// miner (swinging pickaxe), 16x16 cell at mx,my
+const miner=[
+"....HHHH........",
+"...HHHHHL.......",
+"..HHHHHHHh...pp.",
+"..hhhhhhhh..p..p",
+"...ssssss..p...",
+"...sskssk.a.....",
+"...ssssss.a.....",
+"....ssss.a......",
+"..bOOOOOOa......",
+".bbOYYYYOO......",
+".bbOOOOOO.......",
+"..bOOOOOO.......",
+"...JJ..JJ.......",
+"...JJ..JJ.......",
+"..ddd..ddd......"];
+spr(miner,{H:'#ffc21a',h:'#c88a08',L:'#fffbe0',s:'#f2c08a',k:'#2a1a10',O:'#e0581a',Y:'#ffd54a',b:'#a87a4a',J:'#2a3a7a',d:'#3a2010',a:'#8a5a2a',p:'#d0d8e8'},mx,my,false,2);
+// sparks
+[[mx+33,my],[mx+31,my+3],[mx+29,my-2],[mx+28,my+4],[mx+26,my-1]].forEach(([x,y])=>R(x,y,1,1,'#fff080'));
+// headlamp beam
+for(let i=0;i<10;i++)for(let j=-i/3|0;j<=i/3;j++)if((i+j)%2===0)R(mx+18+i,my+4+j,1,1,'#fff6c066');
+
+// --- lava
+for(let x=0;x<W;x++){const top=244+Math.round(Math.sin(x*.25)*2+Math.sin(x*.07)*2);
+  for(let y=top;y<H;y++)R(x,y,1,1,y===top?'#fff0a0':y<top+3?'#ffb028':'#ff5a14');}
+for(let x=0;x<W;x++)if(rnd()<.35)R(x,241+Math.round(Math.sin(x*.25)*2),1,1,'#ff5a1488');
+[[60,238],[120,236],[170,239],[90,240]].forEach(([x,y])=>R(x,y,1,1,'#ffd060'));
+
+// --- depth markers
+function px(text,size,x,y,fill,outline,align,weight){
+  const o=document.createElement('canvas');o.width=W;o.height=size*2;const q=o.getContext('2d');
+  q.font=`${weight||900} ${size}px "Microsoft YaHei","PingFang SC",sans-serif`;q.textBaseline='top';q.fillStyle='#fff';
+  const w=Math.ceil(q.measureText(text).width);const sx=align==='c'?((W-w)/2|0):align==='r'?x-w:x;q.fillText(text,0,0);
+  const d=q.getImageData(0,0,W,size*2).data,on=(i,j)=>i>=0&&j>=0&&i<W&&j<size*2&&d[(j*W+i)*4+3]>110;
+  for(let j=0;j<size*2;j++)for(let i=0;i<w+2;i++){if(!on(i,j)&&outline){for(const[a,b]of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]])if(on(i+a,j+b)){R(sx+i,y+j,1,1,outline);break}}}
+  for(let j=0;j<size*2;j++)for(let i=0;i<w+2;i++)if(on(i,j))R(sx+i,y+j,1,1,typeof fill==='function'?fill(j/size):fill);
+}
+
+
+
+
+// --- title
+const goldGrad=t=>t<.25?'#fff6c0':t<.45?'#ffe050':t<.6?'#ffc020':t<.8?'#f09010':'#c86008';
+// thick drop shadow
+for(const[ox,oy]of[[2,3],[1,3],[2,2]]){const o=document.createElement('canvas');}
+px('淘金者',44,0,10,'#3a1400','#3a1400','c',900);   // pass for shadow block
+g.save();g.translate(0,0);
+px('淘金者',44,0,7,goldGrad,'#5a2400','c',900);
+px('GOLD DIGGER',10,0,58,'#fff0c0','#2a1000','c',900);
+// tagline banner
+R(28,72,136,15,'#1a0c08');R(27,73,138,13,'#1a0c08');R(28,72,136,1,'#ffcf5a');R(28,86,136,1,'#ffcf5a');R(27,73,1,13,'#ffcf5a');R(164,73,1,13,'#ffcf5a');
+
+// badge
+R(118,104,0,0,'#000');
+const badge=(x,y,w,text,bg,fg)=>{R(x,y,w,13,'#3a1a00');R(x+1,y+1,w-2,11,bg);R(x+1,y+1,w-2,1,'#fff8c8');px(text,10,x+w/2,y+1,fg,null,'l',900)};
+// "每局新矿井" badge bottom-left, "三键畅玩" pill
+(()=>{const x=4,y=212;R(x,y,62,14,'#3a1a00');R(x+1,y+1,60,12,'#ffd23a');R(x+1,y+1,60,1,'#fff8c8');})();
+(()=>{const x=104,y=88;})();
+// second pass: small text on a 384x512 grid so Chinese stays readable
+const c2=document.createElement('canvas');c2.width=384;c2.height=512;c2.style.cssText='position:absolute;left:0;top:0;width:1152px;height:1536px;image-rendering:pixelated';document.body.appendChild(c2);
+const h=c2.getContext('2d');
+function px2(text,size,x,y,fill,outline,align){const o=document.createElement('canvas');o.width=384;o.height=size*2;const q=o.getContext('2d');
+ q.font=`900 ${size}px "Microsoft YaHei","PingFang SC",sans-serif`;q.textBaseline='top';q.fillStyle='#fff';const w=Math.ceil(q.measureText(text).width);
+ const sx=align==='c'?((384-w)/2|0):align==='r'?x-w:x;q.fillText(text,1,1);const d=q.getImageData(0,0,384,size*2).data,on=(i,j)=>i>=0&&j>=0&&i<384&&j<size*2&&d[(j*384+i)*4+3]>120;
+ for(let j=0;j<size*2;j++)for(let i=0;i<w+3;i++){if(on(i,j)){h.fillStyle=fill;h.fillRect(sx+i,y+j,1,1)}else if(outline){for(const[a,b]of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]])if(on(i+a,j+b)){h.fillStyle=outline;h.fillRect(sx+i,y+j,1,1);break}}}}
+px2('挖得越深，宝藏越亮！',20,0,147,'#ffffff',null,'c');
+px2('每局新矿井',18,26,426,'#3a1a00',null,'l');
+px2('50米',14,378,246,'#ffe0a0','#1a0e08','r');
+px2('200米',14,378,342,'#ffe0a0','#1a0e08','r');
+px2('400米',14,378,442,'#ffe0a0','#1a0e08','r');
+</script></body></html>

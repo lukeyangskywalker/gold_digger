@@ -1,5 +1,9 @@
 # Name,   Type, SubType, Offset,   Size,     Flags
 nvs,      data, nvs,     0x9000,   0x6000,
 phy_init, data, phy,     0xf000,   0x1000,
-factory,  app,  factory, 0x10000,  0x7d0000,
-game_data,data,nvs,0x7e0000,0x20000,
+factory,  app,  factory, 0x10000,  0x7b0000,
+# Gold Digger's own save log (platforms/passport/main/storage.c). Data left
+# here by other apps is ignored and reused.
+gd_save,  data, 0x40,    0x7c0000, 0x20000,
+# Shared NVS from earlier builds: imported read-only, never written.
+game_data,data, nvs,     0x7e0000, 0x20000,

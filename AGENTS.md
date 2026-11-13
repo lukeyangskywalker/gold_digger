@@ -6,7 +6,9 @@ and hardware/LVGL/NVS in `platforms/passport/`. The Passport UI
 `platforms/common/` and never fork game logic. Current focus: the Passport.
 
 ESP32-C3, 8 MiB flash, no PSRAM, ESP-IDF 5.5.3. Queue button callbacks; never
-block in them. Lock LVGL outside its task. Never erase NVS automatically after an error.
+block in them. Lock LVGL outside its task. Never erase or overwrite our own save after an error (newer or damaged
+saves stay on flash); data other apps leave in our `gd_save` partition is
+ignored and reused, so the game can always save.
 Keep saves versioned (`GD_SCHEMA`) and reject newer ones. Keep maintained
 Markdown paired in English and Simplified Chinese.
 
