@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">斯巴达</string>
+    <string name="start_failed">斯巴达无法启动，存档未被修改。</string>
+    <string name="screen_description">游戏画面。点按所需内容，滑动浏览，返回键返回。</string>
+</resources>

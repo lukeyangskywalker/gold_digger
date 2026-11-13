@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Spartan</string>
+    <string name="start_failed">Spartan could not start. Your save was not changed.</string>
+    <string name="screen_description">Game screen. Tap what you want, swipe to browse; Back returns.</string>
+</resources>

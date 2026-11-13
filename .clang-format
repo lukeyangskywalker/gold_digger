@@ -1,0 +1,24 @@
+# Style for hand-written C. Run: python tools/format_c.py (see tools/README.md).
+BasedOnStyle: LLVM
+Language: Cpp
+IndentWidth: 4
+ContinuationIndentWidth: 8
+ColumnLimit: 110
+# The UI is one translation unit built from ordered includes; never reorder.
+SortIncludes: Never
+IncludeBlocks: Preserve
+# Authored comments and user-visible strings stay exactly as written.
+ReflowComments: false
+BreakStringLiterals: false
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Empty
+AllowShortEnumsOnASingleLine: true
+PointerAlignment: Right
+AlignConsecutiveMacros: Consecutive
+AlignTrailingComments: true
+SpaceBeforeParens: ControlStatements
+IndentCaseLabels: true
+MaxEmptyLinesToKeep: 1

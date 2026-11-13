@@ -1,0 +1,50 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Same release identifier as the Passport firmware and the other ports.
+def spartanVersion = rootProject.file('../../version.txt').text.trim()
+def versionParts = (spartanVersion =~ /\d+/).collect { it as int } + [0, 0, 0]
+
+android {
+    namespace 'com.spartan.game'
+    compileSdk 34
+    ndkVersion '26.3.11579264'
+
+    defaultConfig {
+        applicationId 'com.spartan.game'
+        minSdk 24
+        targetSdk 34
+        versionCode versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2]
+        versionName spartanVersion
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+        }
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=none'
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    // Soundtrack loops (tools/pack_soundtrack.py) are read in place by the native side.
+    androidResources {
+        noCompress 'spm'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+}

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="spartan_background">#FF1B1410</color>
+
+    <style name="Theme.Spartan" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/spartan_background</item>
+        <item name="android:statusBarColor">@color/spartan_background</item>
+        <item name="android:navigationBarColor">@color/spartan_background</item>
+    </style>
+</resources>

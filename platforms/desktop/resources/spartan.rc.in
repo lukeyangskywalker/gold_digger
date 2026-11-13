@@ -1,0 +1,26 @@
+// Windows version resource and DPI-aware manifest for the desktop companion.
+#include <winver.h>
+1 24 "@CMAKE_CURRENT_LIST_DIR@/resources/spartan.manifest"
+// Spartan Quest logo (tools/make_logo.py): exe, window, taskbar and tray icon.
+1 ICON "@CMAKE_CURRENT_LIST_DIR@/resources/spartan.ico"
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION @SPARTAN_RC_VERSION@
+PRODUCTVERSION @SPARTAN_RC_VERSION@
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "FileDescription", "Spartan desktop companion"
+      VALUE "ProductName", "Spartan"
+      VALUE "ProductVersion", "@SPARTAN_VERSION@"
+      VALUE "OriginalFilename", "Spartan.exe"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END

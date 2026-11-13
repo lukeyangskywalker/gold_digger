@@ -1,0 +1,2 @@
+// Spartan Quest logo for the exe, window, taskbar and tray (tools/make_logo.py).
+1 ICON "spartan.ico"
