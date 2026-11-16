@@ -562,18 +562,16 @@ static void draw_mine(lv_layer_t *l) {
         int y = top + row, py = MINE_TOP + row * TILE;
         for (int x = 0; x < GD_COLS; ++x) {
             int px = x * TILE + jx;
-            draw_tile(l, gd_tile(r, x, y), px, py, x, y);
             int dx = x - r->x, dy = y - r->y;
             if (dx < 0) dx = -dx;
             if (dy < 0) dy = -dy;
             int d = dx > dy ? dx : dy;
-            if (y > 0 && d > (int)radius) {
-                if (d > (int)radius + 1)
-                    fill(l, px, py, TILE, TILE, 0x000000, 215);
-                else { /* dithered rim of the lamp light */
+            draw_tile(l, gd_tile(r, x, y), px, py, x, y);
+            if (y > 0 && d >= (int)radius) { /* the outermost lit ring is faint; beyond it is black */
+                if (d > (int)radius)
+                    fill(l, px, py, TILE, TILE, 0x000000, LV_OPA_COVER);
+                else /* flickering rim of the lamp light: dim, but ore still shows */
                     fill(l, px, py, TILE, TILE, 0x000000, flicker ? 170 : 140);
-                    for (int k = 0; k < TILE; k += 6) fill(l, px + k, py + (k / 6 % 2) * 14, 4, 4, 0x000000, 90);
-                }
             }
             /* The tile being picked at shows pixel cracks, more with each hit. */
             if (r->crack_hits && r->crack_x == x && r->crack_y == y) {
